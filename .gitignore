@@ -34,3 +34,16 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Evitar exponer secretos
+postgres-secret.yaml
+
+# Backups SQL o dumps de base de datos
+*.sql
+!sql/schema.sql   # pero sí mantener el schema de la BD
+
+# Credenciales temporales
+*.pem
+*.key
+*.crt
+

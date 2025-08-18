@@ -7,35 +7,122 @@
 <body>
   <h1>📦 Gestor de Inventario</h1>
 
+  <!-- ====================== USUARIOS ====================== -->
   <h2>Usuarios</h2>
   <button onclick="loadUsers()">Ver Usuarios</button>
+  <form onsubmit="createUser(event)">
+    <input type="text" id="userName" placeholder="Nombre" required>
+    <input type="text" id="userRole" placeholder="Rol" required>
+    <button type="submit">Crear Usuario</button>
+  </form>
   <pre id="users"></pre>
 
+  <!-- ====================== PRODUCTOS ====================== -->
   <h2>Productos</h2>
   <button onclick="loadProducts()">Ver Productos</button>
+  <form onsubmit="createProduct(event)">
+    <input type="text" id="productName" placeholder="Nombre" required>
+    <input type="number" id="productPrice" placeholder="Precio" required>
+    <input type="number" id="productStock" placeholder="Stock" required>
+    <button type="submit">Crear Producto</button>
+  </form>
+  <form onsubmit="updateProduct(event)">
+    <input type="number" id="updateId" placeholder="ID Producto" required>
+    <input type="text" id="updateName" placeholder="Nuevo Nombre">
+    <input type="number" id="updatePrice" placeholder="Nuevo Precio">
+    <input type="number" id="updateStock" placeholder="Nuevo Stock">
+    <button type="submit">Actualizar Producto</button>
+  </form>
+  <form onsubmit="deleteProduct(event)">
+    <input type="number" id="deleteId" placeholder="ID Producto" required>
+    <button type="submit">Eliminar Producto</button>
+  </form>
   <pre id="products"></pre>
 
+  <!-- ====================== PEDIDOS ====================== -->
   <h2>Pedidos</h2>
   <button onclick="loadOrders()">Ver Pedidos</button>
+  <form onsubmit="createOrder(event)">
+    <input type="number" id="orderUserId" placeholder="ID Usuario" required>
+    <input type="number" id="orderProductId" placeholder="ID Producto" required>
+    <input type="number" id="orderQuantity" placeholder="Cantidad" required>
+    <input type="text" id="orderStatus" placeholder="Estado (ej: pending)" required>
+    <button type="submit">Crear Pedido</button>
+  </form>
   <pre id="orders"></pre>
 
   <script>
+    // ======== USUARIOS ========
     async function loadUsers() {
       const res = await fetch("/api/users");
-      const data = await res.json();
-      document.getElementById("users").textContent = JSON.stringify(data, null, 2);
+      document.getElementById("users").textContent = JSON.stringify(await res.json(), null, 2);
+    }
+    async function createUser(e) {
+      e.preventDefault();
+      const name = document.getElementById("userName").value;
+      const role = document.getElementById("userRole").value;
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, role })
+      });
+      loadUsers();
     }
 
+    // ======== PRODUCTOS ========
     async function loadProducts() {
       const res = await fetch("/api/products");
-      const data = await res.json();
-      document.getElementById("products").textContent = JSON.stringify(data, null, 2);
+      document.getElementById("products").textContent = JSON.stringify(await res.json(), null, 2);
+    }
+    async function createProduct(e) {
+      e.preventDefault();
+      const name = document.getElementById("productName").value;
+      const price = document.getElementById("productPrice").value;
+      const stock = document.getElementById("productStock").value;
+      await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price, stock })
+      });
+      loadProducts();
+    }
+    async function updateProduct(e) {
+      e.preventDefault();
+      const id = document.getElementById("updateId").value;
+      const name = document.getElementById("updateName").value;
+      const price = document.getElementById("updatePrice").value;
+      const stock = document.getElementById("updateStock").value;
+      await fetch(`/api/products/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price, stock })
+      });
+      loadProducts();
+    }
+    async function deleteProduct(e) {
+      e.preventDefault();
+      const id = document.getElementById("deleteId").value;
+      await fetch(`/api/products/${id}`, { method: "DELETE" });
+      loadProducts();
     }
 
+    // ======== PEDIDOS ========
     async function loadOrders() {
       const res = await fetch("/api/orders");
-      const data = await res.json();
-      document.getElementById("orders").textContent = JSON.stringify(data, null, 2);
+      document.getElementById("orders").textContent = JSON.stringify(await res.json(), null, 2);
+    }
+    async function createOrder(e) {
+      e.preventDefault();
+      const userId = document.getElementById("orderUserId").value;
+      const productId = document.getElementById("orderProductId").value;
+      const quantity = document.getElementById("orderQuantity").value;
+      const status = document.getElementById("orderStatus").value;
+      await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, productId, quantity, status })
+      });
+      loadOrders();
     }
   </script>
 </body>
