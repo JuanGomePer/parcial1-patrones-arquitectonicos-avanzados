@@ -1,0 +1,36 @@
+# ============================
+# Node.js
+# ============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================
+# Environment files
+# ============================
+.env
+.env.*         # en caso de que tengas .env.dev, .env.prod
+
+# ============================
+# Logs
+# ============================
+*.log
+logs/
+debug.log
+
+# ============================
+# Docker
+# ============================
+# No ignores docker-compose.yml ni Dockerfile, esos deben ir al repo
+# Sí ignores datos persistentes locales de volúmenes
+db_data/
+
+# ============================
+# Editor / Sistema
+# ============================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

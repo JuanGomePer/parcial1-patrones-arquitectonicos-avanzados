@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestor de Inventario</title>
+</head>
+<body>
+  <h1>📦 Gestor de Inventario</h1>
+
+  <h2>Usuarios</h2>
+  <button onclick="loadUsers()">Ver Usuarios</button>
+  <pre id="users"></pre>
+
+  <h2>Productos</h2>
+  <button onclick="loadProducts()">Ver Productos</button>
+  <pre id="products"></pre>
+
+  <h2>Pedidos</h2>
+  <button onclick="loadOrders()">Ver Pedidos</button>
+  <pre id="orders"></pre>
+
+  <script>
+    async function loadUsers() {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      document.getElementById("users").textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function loadProducts() {
+      const res = await fetch("/api/products");
+      const data = await res.json();
+      document.getElementById("products").textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function loadOrders() {
+      const res = await fetch("/api/orders");
+      const data = await res.json();
+      document.getElementById("orders").textContent = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>
