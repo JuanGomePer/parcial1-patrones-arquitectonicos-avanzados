@@ -54,14 +54,14 @@
   <script>
     // ======== USUARIOS ========
     async function loadUsers() {
-      const res = await fetch("/api/users");
+      const res = await fetch("/patrones/api/users");
       document.getElementById("users").textContent = JSON.stringify(await res.json(), null, 2);
     }
     async function createUser(e) {
       e.preventDefault();
       const name = document.getElementById("userName").value;
       const role = document.getElementById("userRole").value;
-      await fetch("/api/users", {
+      await fetch("/patrones/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, role })
@@ -71,7 +71,7 @@
 
     // ======== PRODUCTOS ========
     async function loadProducts() {
-      const res = await fetch("/api/products");
+      const res = await fetch("/patrones/api/products");
       document.getElementById("products").textContent = JSON.stringify(await res.json(), null, 2);
     }
     async function createProduct(e) {
@@ -79,7 +79,7 @@
       const name = document.getElementById("productName").value;
       const price = document.getElementById("productPrice").value;
       const stock = document.getElementById("productStock").value;
-      await fetch("/api/products", {
+      await fetch("/patrones/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, price, stock })
@@ -92,7 +92,7 @@
       const name = document.getElementById("updateName").value;
       const price = document.getElementById("updatePrice").value;
       const stock = document.getElementById("updateStock").value;
-      await fetch(`/api/products/${id}`, {
+      await fetch(`/patrones/api/products/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, price, stock })
@@ -102,13 +102,13 @@
     async function deleteProduct(e) {
       e.preventDefault();
       const id = document.getElementById("deleteId").value;
-      await fetch(`/api/products/${id}`, { method: "DELETE" });
+      await fetch(`/patrones/api/products/${id}`, { method: "DELETE" });
       loadProducts();
     }
 
     // ======== PEDIDOS ========
     async function loadOrders() {
-      const res = await fetch("/api/orders");
+      const res = await fetch("/patrones/api/orders");
       document.getElementById("orders").textContent = JSON.stringify(await res.json(), null, 2);
     }
     async function createOrder(e) {
@@ -117,7 +117,7 @@
       const productId = document.getElementById("orderProductId").value;
       const quantity = document.getElementById("orderQuantity").value;
       const status = document.getElementById("orderStatus").value;
-      await fetch("/api/orders", {
+      await fetch("/patrones/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, productId, quantity, status })
