@@ -1,128 +1,458 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gestor de Inventario</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #151922;
+      --muted: #9aa4b2;
+      --text: #e9eef6;
+      --accent: #ffb300;  
+      --accent-2: #ff7a00; 
+      --ok: #2ecc71;
+      --warn: #e67e22;
+      --err: #e74c3c;
+      --radius: 14px;
+      --shadow: 0 10px 25px rgba(0,0,0,0.35);
+    }
+ 
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
+      color: var(--text);
+      background: radial-gradient(1200px 800px at 100% -10%, rgba(255,186,0,0.08), transparent 60%),
+                  radial-gradient(800px 600px at 0% 120%, rgba(255,122,0,0.08), transparent 60%),
+                  var(--bg);
+    }
+ 
+    header {
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(8px);
+      background: rgba(15,17,21,0.75);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      z-index: 20;
+    }
+    .nav {
+      max-width: 1100px; margin: 0 auto; padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; }
+    .brand .emoji { font-size: 1.35rem; }
+    .brand span { letter-spacing: .3px; }
+ 
+    .tabs { display: flex; gap: 8px; }
+    .tab-btn {
+      appearance: none; border: 0; cursor: pointer; padding: 10px 14px; border-radius: 999px;
+      color: var(--text); background: transparent; transition: 150ms ease-in-out;
+    }
+    .tab-btn[aria-selected="true"] {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #111; font-weight: 700;
+      box-shadow: 0 6px 16px rgba(255,179,0,0.35);
+    }
+ 
+    main { max-width: 1100px; margin: 24px auto 80px; padding: 0 20px; }
+ 
+    .grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+ 
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00)), var(--panel);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+ 
+    h1 { font-size: 1.7rem; margin: 18px 0; }
+    h2 { font-size: 1.2rem; margin: 0 0 12px; color: #ffd27a; }
+ 
+    .form { display: grid; gap: 12px; }
+    .row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .row-3 { grid-template-columns: repeat(3, 1fr); }
+    .row-4 { grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 680px) { .row, .row-3, .row-4 { grid-template-columns: 1fr; } }
+ 
+    label { font-size: .9rem; color: var(--muted); }
+    input {
+      width: 100%;
+      padding: 10px 12px; color: var(--text);
+      background: #0d0f14; border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px; outline: none; transition: 120ms ease;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,179,0,0.15); }
+ 
+    .btn {
+      appearance: none; border: 0; cursor: pointer; padding: 10px 14px; border-radius: 10px;
+      font-weight: 700; letter-spacing: .3px;
+    }
+    .btn-primary { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #111; }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.12); }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+ 
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+ 
+    table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+    thead th { text-align: left; color: var(--muted); font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 10px 8px; }
+    tbody td { padding: 10px 8px; border-bottom: 1px dashed rgba(255,255,255,0.06); }
+ 
+    .empty { color: var(--muted); font-style: italic; }
+ 
+    .section { display: none; }
+    .section.active { display: block; }
+ 
+    .toast {
+      position: fixed; right: 18px; bottom: 18px; z-index: 50;
+      background: #0d0f14; border: 1px solid rgba(255,255,255,0.12); color: var(--text);
+      padding: 12px 14px; border-radius: 12px; box-shadow: var(--shadow); display: none;
+    }
+    .toast.show { display: block; }
+ 
+    .badge { padding: 4px 8px; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+    .badge.ok { background: rgba(46,204,113,0.15); color: #b8f5cf; border: 1px solid rgba(46,204,113,0.35); }
+    .badge.warn { background: rgba(230,126,34,0.15); color: #ffd2a6; border: 1px solid rgba(230,126,34,0.35); }
+    .badge.muted { background: rgba(255,255,255,0.07); color: #d7deea; border: 1px solid rgba(255,255,255,0.12); }
+  </style>
 </head>
 <body>
-  <h1>📦 Gestor de Inventario</h1>
-
-  <!-- ====================== USUARIOS ====================== -->
-  <h2>Usuarios</h2>
-  <button onclick="loadUsers()">Ver Usuarios</button>
-  <form onsubmit="createUser(event)">
-    <input type="text" id="userName" placeholder="Nombre" required>
-    <input type="text" id="userRole" placeholder="Rol" required>
-    <button type="submit">Crear Usuario</button>
-  </form>
-  <pre id="users"></pre>
-
-  <!-- ====================== PRODUCTOS ====================== -->
-  <h2>Productos</h2>
-  <button onclick="loadProducts()">Ver Productos</button>
-  <form onsubmit="createProduct(event)">
-    <input type="text" id="productName" placeholder="Nombre" required>
-    <input type="number" id="productPrice" placeholder="Precio" required>
-    <input type="number" id="productStock" placeholder="Stock" required>
-    <button type="submit">Crear Producto</button>
-  </form>
-  <form onsubmit="updateProduct(event)">
-    <input type="number" id="updateId" placeholder="ID Producto" required>
-    <input type="text" id="updateName" placeholder="Nuevo Nombre">
-    <input type="number" id="updatePrice" placeholder="Nuevo Precio">
-    <input type="number" id="updateStock" placeholder="Nuevo Stock">
-    <button type="submit">Actualizar Producto</button>
-  </form>
-  <form onsubmit="deleteProduct(event)">
-    <input type="number" id="deleteId" placeholder="ID Producto" required>
-    <button type="submit">Eliminar Producto</button>
-  </form>
-  <pre id="products"></pre>
-
-  <!-- ====================== PEDIDOS ====================== -->
-  <h2>Pedidos</h2>
-  <button onclick="loadOrders()">Ver Pedidos</button>
-  <form onsubmit="createOrder(event)">
-    <input type="number" id="orderUserId" placeholder="ID Usuario" required>
-    <input type="number" id="orderProductId" placeholder="ID Producto" required>
-    <input type="number" id="orderQuantity" placeholder="Cantidad" required>
-    <input type="text" id="orderStatus" placeholder="Estado (ej: pending)" required>
-    <button type="submit">Crear Pedido</button>
-  </form>
-  <pre id="orders"></pre>
-
+  <header>
+    <div class="nav">
+      <div class="brand"><span class="emoji">📦</span><span>Gestor de Inventario</span></div>
+      <div class="tabs" role="tablist" aria-label="Secciones">
+        <button class="tab-btn" role="tab" aria-selected="true" data-tab="usuarios">Usuarios</button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="productos">Productos</button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="pedidos">Pedidos</button>
+      </div>
+    </div>
+  </header>
+ 
+  <main>
+    <!-- ============== USUARIOS ============== -->
+    <section id="usuarios" class="section active" aria-labelledby="tab-usuarios">
+      <div class="grid">
+        <div class="card">
+          <h2>Crear usuario</h2>
+          <form class="form" onsubmit="createUser(event)">
+            <div class="row">
+              <div>
+                <label for="userName">Nombre</label>
+                <input type="text" id="userName" placeholder="Nombre" required />
+              </div>
+              <div>
+                <label for="userRole">Rol</label>
+                <input type="text" id="userRole" placeholder="Rol (admin, vendedor…)" required />
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary" type="submit">Crear usuario</button>
+              <button class="btn btn-ghost" type="button" onclick="loadUsers()">Refrescar</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="toolbar">
+            <h2 style="margin:0;">Listado</h2>
+            <button class="btn btn-ghost" onclick="loadUsers()">Ver usuarios</button>
+          </div>
+          <div id="usersWrap">
+            <p class="empty">Sin datos. Pulsa "Ver usuarios".</p>
+          </div>
+        </div>
+      </div>
+    </section>
+ 
+    <!-- ============== PRODUCTOS ============== -->
+    <section id="productos" class="section" aria-labelledby="tab-productos">
+      <div class="grid">
+        <div class="card">
+          <h2>Crear producto</h2>
+          <form class="form" onsubmit="createProduct(event)">
+            <div class="row-3 row">
+              <div>
+                <label for="productName">Nombre</label>
+                <input type="text" id="productName" placeholder="Nombre" required />
+              </div>
+              <div>
+                <label for="productPrice">Precio</label>
+                <input type="number" id="productPrice" placeholder="Precio" min="0" step="0.01" required />
+              </div>
+              <div>
+                <label for="productStock">Stock</label>
+                <input type="number" id="productStock" placeholder="Stock" min="0" step="1" required />
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary" type="submit">Crear producto</button>
+              <button class="btn btn-ghost" type="button" onclick="loadProducts()">Refrescar</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Actualizar / eliminar</h2>
+          <form class="form" onsubmit="updateProduct(event)">
+            <div class="row-4 row">
+              <div>
+                <label for="updateId">ID</label>
+                <input type="number" id="updateId" placeholder="ID Producto" required />
+              </div>
+              <div>
+                <label for="updateName">Nuevo nombre</label>
+                <input type="text" id="updateName" placeholder="Opcional" />
+              </div>
+              <div>
+                <label for="updatePrice">Nuevo precio</label>
+                <input type="number" id="updatePrice" placeholder="Opcional" min="0" step="0.01" />
+              </div>
+              <div>
+                <label for="updateStock">Nuevo stock</label>
+                <input type="number" id="updateStock" placeholder="Opcional" min="0" step="1" />
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary" type="submit">Actualizar</button>
+              <button class="btn btn-ghost" type="button" onclick="deleteProductFromField()">Eliminar</button>
+            </div>
+          </form>
+        </div>
+        <div class="card" style="grid-column: 1 / -1;">
+          <div class="toolbar">
+            <h2 style="margin:0;">Inventario</h2>
+            <button class="btn btn-ghost" onclick="loadProducts()">Ver productos</button>
+          </div>
+          <div id="productsWrap">
+            <p class="empty">Sin datos. Pulsa "Ver productos".</p>
+          </div>
+        </div>
+      </div>
+    </section>
+ 
+    <!-- ============== PEDIDOS ============== -->
+    <section id="pedidos" class="section" aria-labelledby="tab-pedidos">
+      <div class="grid">
+        <div class="card">
+          <h2>Crear pedido</h2>
+          <form class="form" onsubmit="createOrder(event)">
+            <div class="row-4 row">
+              <div>
+                <label for="orderUserId">ID usuario</label>
+                <input type="number" id="orderUserId" placeholder="ID Usuario" required />
+              </div>
+              <div>
+                <label for="orderProductId">ID producto</label>
+                <input type="number" id="orderProductId" placeholder="ID Producto" required />
+              </div>
+              <div>
+                <label for="orderQuantity">Cantidad</label>
+                <input type="number" id="orderQuantity" placeholder="Cantidad" min="1" step="1" required />
+              </div>
+              <div>
+                <label for="orderStatus">Estado</label>
+                <input type="text" id="orderStatus" placeholder="pending, shipped…" required />
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary" type="submit">Crear pedido</button>
+              <button class="btn btn-ghost" type="button" onclick="loadOrders()">Refrescar</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="toolbar">
+            <h2 style="margin:0;">Listado</h2>
+            <button class="btn btn-ghost" onclick="loadOrders()">Ver pedidos</button>
+          </div>
+          <div id="ordersWrap">
+            <p class="empty">Sin datos. Pulsa "Ver pedidos".</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+ 
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+ 
   <script>
-    // ======== USUARIOS ========
+    // ============== Helpers UI ==============
+    const toast = (msg, type = 'ok') => {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.style.borderColor = type === 'err' ? 'rgba(231,76,60,0.45)' : 'rgba(255,179,0,0.45)';
+      el.classList.add('show');
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 2600);
+    };
+ 
+    const renderTable = (mountId, items, columns) => {
+      const wrap = document.getElementById(mountId);
+      if (!Array.isArray(items) || items.length === 0) {
+        wrap.innerHTML = '<p class="empty">Sin datos.</p>';
+        return;
+      }
+      const thead = '<thead><tr>' + columns.map(c => `<th>${c.label}</th>`).join('') + '</tr></thead>';
+      const rows = items.map(it => '<tr>' + columns.map(c => `<td>${c.render ? c.render(it[c.key], it) : (it[c.key] ?? '')}</td>`).join('') + '</tr>').join('');
+      wrap.innerHTML = `<div class="card" style="padding:0;border:none;background:transparent;box-shadow:none;">`+
+        `<table>${thead}<tbody>${rows}</tbody></table>`+
+        `</div>`;
+    };
+ 
+    // ============== Tabs ==============
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.setAttribute('aria-selected', 'false'));
+        btn.setAttribute('aria-selected', 'true');
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(tab).classList.add('active');
+      });
+    });
+ 
+    // ============== API: USUARIOS ==============
     async function loadUsers() {
-      const res = await fetch("/patrones/api/users");
-      document.getElementById("users").textContent = JSON.stringify(await res.json(), null, 2);
+      try {
+        const res = await fetch('/patrones/api/users');
+        if (!res.ok) throw new Error('Error cargando usuarios');
+        const data = await res.json();
+        renderTable('usersWrap', data, [
+          { key: 'id', label: 'ID' },
+          { key: 'name', label: 'Nombre' },
+          { key: 'role', label: 'Rol' },
+        ]);
+        toast('Usuarios actualizados');
+      } catch (e) {
+        toast(e.message, 'err');
+      }
     }
+ 
     async function createUser(e) {
       e.preventDefault();
-      const name = document.getElementById("userName").value;
-      const role = document.getElementById("userRole").value;
-      await fetch("/patrones/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, role })
-      });
-      loadUsers();
+      const name = document.getElementById('userName').value.trim();
+      const role = document.getElementById('userRole').value.trim();
+      try {
+        const res = await fetch('/patrones/api/users', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, role })
+        });
+        if (!res.ok) throw new Error('No se pudo crear el usuario');
+        (e.target).reset();
+        loadUsers();
+        toast('Usuario creado');
+      } catch (e) { toast(e.message, 'err'); }
     }
-
-    // ======== PRODUCTOS ========
+ 
+    // ============== API: PRODUCTOS ==============
     async function loadProducts() {
-      const res = await fetch("/patrones/api/products");
-      document.getElementById("products").textContent = JSON.stringify(await res.json(), null, 2);
+      try {
+        const res = await fetch('/patrones/api/products');
+        if (!res.ok) throw new Error('Error cargando productos');
+        const data = await res.json();
+        renderTable('productsWrap', data, [
+          { key: 'id', label: 'ID' },
+          { key: 'name', label: 'Producto' },
+          { key: 'price', label: 'Precio', render: (v) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(v || 0) },
+          { key: 'stock', label: 'Stock', render: (v) => `<span class="badge ${v > 0 ? 'ok' : 'warn'}">${v ?? 0}</span>` },
+        ]);
+        toast('Productos actualizados');
+      } catch (e) { toast(e.message, 'err'); }
     }
+ 
     async function createProduct(e) {
       e.preventDefault();
-      const name = document.getElementById("productName").value;
-      const price = document.getElementById("productPrice").value;
-      const stock = document.getElementById("productStock").value;
-      await fetch("/patrones/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, price, stock })
-      });
-      loadProducts();
+      const name = document.getElementById('productName').value.trim();
+      const price = Number(document.getElementById('productPrice').value);
+      const stock = Number(document.getElementById('productStock').value);
+      try {
+        const res = await fetch('/patrones/api/products', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, price, stock })
+        });
+        if (!res.ok) throw new Error('No se pudo crear el producto');
+        (e.target).reset();
+        loadProducts();
+        toast('Producto creado');
+      } catch (e) { toast(e.message, 'err'); }
     }
+ 
     async function updateProduct(e) {
       e.preventDefault();
-      const id = document.getElementById("updateId").value;
-      const name = document.getElementById("updateName").value;
-      const price = document.getElementById("updatePrice").value;
-      const stock = document.getElementById("updateStock").value;
-      await fetch(`/patrones/api/products/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, price, stock })
-      });
-      loadProducts();
+      const id = document.getElementById('updateId').value;
+      const name = document.getElementById('updateName').value.trim() || undefined;
+      const price = document.getElementById('updatePrice').value;
+      const stock = document.getElementById('updateStock').value;
+      try {
+        const res = await fetch(`/patrones/api/products/${id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, price: price === '' ? undefined : Number(price), stock: stock === '' ? undefined : Number(stock) })
+        });
+        if (!res.ok) throw new Error('No se pudo actualizar el producto');
+        (e.target).reset();
+        loadProducts();
+        toast('Producto actualizado');
+      } catch (e) { toast(e.message, 'err'); }
     }
+ 
+    function deleteProductFromField() {
+      const id = document.getElementById('updateId').value || document.getElementById('deleteId')?.value;
+      if (!id) return toast('Ingresa el ID a eliminar', 'err');
+      if (!confirm(`¿Eliminar el producto #${id}?`)) return;
+      deleteProductById(id);
+    }
+ 
     async function deleteProduct(e) {
-      e.preventDefault();
-      const id = document.getElementById("deleteId").value;
-      await fetch(`/patrones/api/products/${id}`, { method: "DELETE" });
-      loadProducts();
+      e?.preventDefault();
+      const id = document.getElementById('deleteId').value;
+      if (!id) return toast('Ingresa el ID a eliminar', 'err');
+      if (!confirm(`¿Eliminar el producto #${id}?`)) return;
+      deleteProductById(id);
     }
-
-    // ======== PEDIDOS ========
+ 
+    async function deleteProductById(id) {
+      try {
+        const res = await fetch(`/patrones/api/products/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('No se pudo eliminar el producto');
+        loadProducts();
+        toast('Producto eliminado');
+      } catch (e) { toast(e.message, 'err'); }
+    }
+ 
+    // ============== API: PEDIDOS ==============
     async function loadOrders() {
-      const res = await fetch("/patrones/api/orders");
-      document.getElementById("orders").textContent = JSON.stringify(await res.json(), null, 2);
+      try {
+        const res = await fetch('/patrones/api/orders');
+        if (!res.ok) throw new Error('Error cargando pedidos');
+        const data = await res.json();
+        renderTable('ordersWrap', data, [
+          { key: 'id', label: 'ID' },
+          { key: 'userId', label: 'Usuario' },
+          { key: 'productId', label: 'Producto' },
+          { key: 'quantity', label: 'Cantidad' },
+          { key: 'status', label: 'Estado', render: (v) => `<span class="badge ${v === 'pending' ? 'warn' : 'muted'}">${v}</span>` },
+        ]);
+        toast('Pedidos actualizados');
+      } catch (e) { toast(e.message, 'err'); }
     }
+ 
     async function createOrder(e) {
       e.preventDefault();
-      const userId = document.getElementById("orderUserId").value;
-      const productId = document.getElementById("orderProductId").value;
-      const quantity = document.getElementById("orderQuantity").value;
-      const status = document.getElementById("orderStatus").value;
-      await fetch("/patrones/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, productId, quantity, status })
-      });
-      loadOrders();
+      const userId = Number(document.getElementById('orderUserId').value);
+      const productId = Number(document.getElementById('orderProductId').value);
+      const quantity = Number(document.getElementById('orderQuantity').value);
+      const status = document.getElementById('orderStatus').value.trim();
+      try {
+        const res = await fetch('/patrones/api/orders', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, productId, quantity, status })
+        });
+        if (!res.ok) throw new Error('No se pudo crear el pedido');
+        (e.target).reset();
+        loadOrders();
+        toast('Pedido creado');
+      } catch (e) { toast(e.message, 'err'); }
     }
   </script>
 </body>
