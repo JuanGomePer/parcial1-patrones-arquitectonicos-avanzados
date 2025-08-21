@@ -34,4 +34,3 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/monolito-inventario:${{ env.VERSION }}
-            ${{ secrets.DOCKER_USERNAME }}/monolito-inventario:latest
