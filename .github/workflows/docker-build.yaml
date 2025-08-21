@@ -35,39 +35,50 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/monolito-inventario:${{ env.VERSION }}
 
-      - name: Checkout Helm Chart repo
+      - name: Checkout manifests repo
         uses: actions/checkout@v3
         with:
-          repository: JuanGomePer/helm-chart
+          repository: JuanGomePer/manifiestos-parcial1-patrones-arquitectonicos-avanzados
           token: ${{ secrets.GITHUB_TOKEN }}
-          path: charts
+          path: manifiestos
 
       - name: Update Helm chart values.yaml image tag
         run: |
-          cd charts/patrones
+          cd manifiestos/charts/patrones
           yq eval ".image.tag = \"${VERSION}\"" -i values.yaml
 
       - name: Update Chart version in Chart.yaml
         run: |
-          cd charts/patrones
+          cd manifiestos/charts/patrones
           yq eval ".version = \"${VERSION}\"" -i Chart.yaml
           yq eval ".appVersion = \"${VERSION}\"" -i Chart.yaml
 
       - name: Package Helm Chart
         run: |
-          cd charts/patrones
-          helm package .
+          cd manifiestos
+          helm package charts/patrones
+
+      - name: Checkout helm-chart repo
+        uses: actions/checkout@v3
+        with:
+          repository: JuanGomePer/helm-chart
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: helm-chart
+
+      - name: Copy packaged chart to helm-chart repo
+        run: |
+          cp manifiestos/patrones-*.tgz helm-chart/
 
       - name: Update Helm repo index
         run: |
-          cd charts/patrones
+          cd helm-chart
           helm repo index . --url https://juangomeper.github.io/helm-chart/
 
-      - name: Commit and push changes
+      - name: Commit and push changes to helm-chart repo
         run: |
-          cd charts
+          cd helm-chart
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add .
-          git commit -m "Update Helm chart version and image tag to ${VERSION}"
+          git commit -m "Update Helm chart package and index to ${VERSION}"
           git push origin main
