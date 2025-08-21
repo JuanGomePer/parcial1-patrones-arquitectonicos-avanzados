@@ -54,10 +54,11 @@ jobs:
           yq eval ".version = \"${VERSION}\"" -i Chart.yaml
           yq eval ".appVersion = \"${VERSION}\"" -i Chart.yaml
 
-      - name: Package Helm chart
+      - name: Package Helm Chart
         run: |
-          cd helm-chart
-          helm package .
+            cd helm-chart/patrones
+            helm package .
+
 
       - name: Update Helm repo index
         run: |
