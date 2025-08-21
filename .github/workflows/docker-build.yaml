@@ -40,34 +40,32 @@ jobs:
         with:
           repository: JuanGomePer/helm-chart
           token: ${{ secrets.GITHUB_TOKEN }}
-          path: helm-chart
+          path: charts
 
       - name: Update Helm chart values.yaml image tag
         run: |
-          cd helm-chart
+          cd charts/patrones
           yq eval ".image.tag = \"${VERSION}\"" -i values.yaml
 
       - name: Update Chart version in Chart.yaml
         run: |
-          cd helm-chart
-          # Increment patch version automatically or set it to VERSION if prefieres
+          cd charts/patrones
           yq eval ".version = \"${VERSION}\"" -i Chart.yaml
           yq eval ".appVersion = \"${VERSION}\"" -i Chart.yaml
 
       - name: Package Helm Chart
         run: |
-            cd helm-chart/patrones
-            helm package .
-
+          cd charts/patrones
+          helm package .
 
       - name: Update Helm repo index
         run: |
-          cd helm-chart
+          cd charts/patrones
           helm repo index . --url https://juangomeper.github.io/helm-chart/
 
       - name: Commit and push changes
         run: |
-          cd helm-chart
+          cd charts
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add .
