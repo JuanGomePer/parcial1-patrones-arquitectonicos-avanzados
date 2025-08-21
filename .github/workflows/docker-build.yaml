@@ -1,15 +1,16 @@
-name: Build and Push Docker Image
+name: Build, Push Docker and Update Helm Chart
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
-  build:
+  build_and_update:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout main repo
         uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
@@ -21,7 +22,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract version
+      - name: Extract version tag
         id: vars
         run: |
           VERSION=1.0.${{ github.run_number }}-${GITHUB_SHA::7}
@@ -32,5 +33,42 @@ jobs:
         with:
           context: .
           push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/monolito-inventario:${{ env.VERSION }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/monolito-inventario:${{ env.VERSION }}
+
+      - name: Checkout Helm Chart repo
+        uses: actions/checkout@v3
+        with:
+          repository: JuanGomePer/helm-chart
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: helm-chart
+
+      - name: Update Helm chart values.yaml image tag
+        run: |
+          cd helm-chart
+          yq eval ".image.tag = \"${VERSION}\"" -i values.yaml
+
+      - name: Update Chart version in Chart.yaml
+        run: |
+          cd helm-chart
+          # Increment patch version automatically or set it to VERSION if prefieres
+          yq eval ".version = \"${VERSION}\"" -i Chart.yaml
+          yq eval ".appVersion = \"${VERSION}\"" -i Chart.yaml
+
+      - name: Package Helm chart
+        run: |
+          cd helm-chart
+          helm package .
+
+      - name: Update Helm repo index
+        run: |
+          cd helm-chart
+          helm repo index . --url https://juangomeper.github.io/helm-chart/
+
+      - name: Commit and push changes
+        run: |
+          cd helm-chart
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "Update Helm chart version and image tag to ${VERSION}"
+          git push origin main
