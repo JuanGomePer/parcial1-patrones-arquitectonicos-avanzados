@@ -56,18 +56,25 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/monolito-inventario:${{ env.DOCKER_VERSION }}
 
+      - name: Checkout manifests repo (chart fuente)
+        uses: actions/checkout@v3
+        with:
+          repository: JuanGomePer/manifiestos-parcial1-patrones-arquitectonicos-avanzados
+          token: ${{ secrets.PAT_HELMCHART }}
+          path: manifiestos
+
       - name: Update Helm chart values.yaml image tag
         shell: bash
         run: |
           set -e
-          cd charts/patrones
+          cd manifiestos/charts/patrones
           yq eval ".image.tag = \"${DOCKER_VERSION}\"" -i values.yaml
 
       - name: Update Chart version in Chart.yaml
         shell: bash
         run: |
           set -e
-          cd charts/patrones
+          cd manifiestos/charts/patrones
           yq eval ".version = \"${CHART_VERSION}\"" -i Chart.yaml
           yq eval ".appVersion = \"${CHART_VERSION}\"" -i Chart.yaml
 
@@ -75,8 +82,8 @@ jobs:
         shell: bash
         run: |
           set -e
+          cd manifiestos
           helm package charts/patrones
-          ls -lah .
           PKG="$(ls -1 patrones-*.tgz | tail -n 1)"
           echo "CHART_PKG=$PKG" >> $GITHUB_ENV
           echo "Empaquetado: $PKG"
@@ -92,7 +99,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          cp "${{ env.CHART_PKG }}" helm-chart/
+          cp "manifiestos/${{ env.CHART_PKG }}" helm-chart/
           ls -lah helm-chart
 
       - name: Update Helm repo index (merge)
