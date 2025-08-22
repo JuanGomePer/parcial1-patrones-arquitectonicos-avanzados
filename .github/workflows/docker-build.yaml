@@ -53,46 +53,6 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/monolito-inventario:${{ env.VERSION }}
 
-      - name: Checkout manifests repo
-        uses: actions/checkout@v3
-        with:
-          repository: JuanGomePer/manifiestos-parcial1-patrones-arquitectonicos-avanzados
-          token: ${{ secrets.PAT_HELMCHART  }}
-          path: manifiestos
-
-      - name: Update Helm chart values.yaml image tag
-        shell: bash
-        run: |
-          set -e
-          cd manifiestos/charts/patrones
-          yq eval ".image.tag = \"${VERSION}\"" -i values.yaml
-
-      - name: Update Chart version in Chart.yaml
-        shell: bash
-        run: |
-          set -e
-          cd manifiestos/charts/patrones
-          yq eval ".version = \"${VERSION}\"" -i Chart.yaml
-          yq eval ".appVersion = \"${VERSION}\"" -i Chart.yaml
-
-      - name: Update ArgoCD Application targetRevision
-        shell: bash
-        run: |
-          set -e
-          cd manifiestos/applications
-          yq eval ".spec.source.targetRevision = \"${VERSION}\"" -i app-argocd.yaml
-
-      - name: Package Helm Chart
-        shell: bash
-        run: |
-          set -e
-          cd manifiestos
-          helm package charts/patrones
-          ls -lah .
-          PKG="$(ls -1 patrones-*.tgz | tail -n 1)"
-          echo "CHART_PKG=$PKG" >> $GITHUB_ENV
-          echo "Empaquetado: $PKG"
-
       - name: Checkout helm-chart repo (GitHub Pages)
         uses: actions/checkout@v3
         with:
@@ -100,12 +60,27 @@ jobs:
           token: ${{ secrets.PAT_HELMCHART }}
           path: helm-chart
 
-      - name: Copy packaged chart to helm-chart repo
+      - name: Update Helm chart values and version
         shell: bash
         run: |
           set -e
-          cp "manifiestos/${{ env.CHART_PKG }}" helm-chart/
-          ls -lah helm-chart
+          cd helm-chart/charts/patrones
+          # Actualiza el tag de la imagen
+          yq eval ".image.tag = \"${VERSION}\"" -i values.yaml
+          # Actualiza versión de chart y appVersion
+          yq eval ".version = \"${VERSION}\"" -i Chart.yaml
+          yq eval ".appVersion = \"${VERSION}\"" -i Chart.yaml
+
+      - name: Package Helm Chart
+        shell: bash
+        run: |
+          set -e
+          cd helm-chart/charts/patrones
+          helm package . -d ../..
+          cd ../..
+          PKG="$(ls -1 patrones-*.tgz | tail -n 1)"
+          echo "CHART_PKG=$PKG" >> $GITHUB_ENV
+          echo "Empaquetado: $PKG"
 
       - name: Update Helm repo index (merge)
         shell: bash
@@ -129,16 +104,4 @@ jobs:
           git pull --rebase || true
           git add .
           git commit -m "Publish chart patrones ${VERSION}" || echo "No commit needed"
-          git push origin main
-
-      - name: Commit and push changes to manifests repo
-        shell: bash
-        run: |
-          set -e
-          cd manifiestos
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git pull --rebase || true
-          git add .
-          git commit -m "Update ArgoCD app to chart ${VERSION}" || echo "No commit needed"
           git push origin main
