@@ -72,7 +72,7 @@ jobs:
       - name: Update Helm repo index
         run: |
           cd helm-chart
-          helm repo index . --url https://juangomeper.github.io/helm-chart/
+          helm repo index . --url https://juangomeper.github.io/helm-chart/ --merge index.yaml
 
       - name: Commit and push changes to helm-chart repo
         run: |
