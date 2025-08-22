@@ -42,45 +42,41 @@ jobs:
         shell: bash
         run: |
           set -e
-          VERSION="1.0.${{ github.run_number }}+${GITHUB_SHA::7}"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Version: $VERSION"
+          DOCKER_VERSION="1.0.${{ github.run_number }}-${GITHUB_SHA::7}"
+          CHART_VERSION="1.0.${{ github.run_number }}+${GITHUB_SHA::7}"
+          echo "DOCKER_VERSION=$DOCKER_VERSION" >> $GITHUB_ENV
+          echo "CHART_VERSION=$CHART_VERSION" >> $GITHUB_ENV
+          echo "Docker tag: $DOCKER_VERSION"
+          echo "Chart version: $CHART_VERSION"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/monolito-inventario:${{ env.VERSION }}
-
-      - name: Checkout manifests repo (chart fuente)
-        uses: actions/checkout@v3
-        with:
-          repository: JuanGomePer/manifiestos-parcial1-patrones-arquitectonicos-avanzados
-          token: ${{ secrets.PAT_HELMCHART }}
-          path: manifiestos
+          tags: ${{ secrets.DOCKER_USERNAME }}/monolito-inventario:${{ env.DOCKER_VERSION }}
 
       - name: Update Helm chart values.yaml image tag
         shell: bash
         run: |
           set -e
-          cd manifiestos/charts/patrones
-          yq eval ".image.tag = \"${VERSION}\"" -i values.yaml
+          cd charts/patrones
+          yq eval ".image.tag = \"${DOCKER_VERSION}\"" -i values.yaml
 
       - name: Update Chart version in Chart.yaml
         shell: bash
         run: |
           set -e
-          cd manifiestos/charts/patrones
-          yq eval ".version = \"${VERSION}\"" -i Chart.yaml
-          yq eval ".appVersion = \"${VERSION}\"" -i Chart.yaml
+          cd charts/patrones
+          yq eval ".version = \"${CHART_VERSION}\"" -i Chart.yaml
+          yq eval ".appVersion = \"${CHART_VERSION}\"" -i Chart.yaml
 
       - name: Package Helm Chart
         shell: bash
         run: |
           set -e
-          cd manifiestos
           helm package charts/patrones
+          ls -lah .
           PKG="$(ls -1 patrones-*.tgz | tail -n 1)"
           echo "CHART_PKG=$PKG" >> $GITHUB_ENV
           echo "Empaquetado: $PKG"
@@ -96,7 +92,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          cp "manifiestos/${{ env.CHART_PKG }}" helm-chart/
+          cp "${{ env.CHART_PKG }}" helm-chart/
           ls -lah helm-chart
 
       - name: Update Helm repo index (merge)
@@ -120,5 +116,5 @@ jobs:
           git config user.email "github-actions@github.com"
           git pull --rebase || true
           git add .
-          git commit -m "Publish chart patrones ${VERSION}" || echo "No commit needed"
+          git commit -m "Publish chart patrones ${CHART_VERSION}" || echo "No commit needed"
           git push origin main
