@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          VERSION="1.0.${{ github.run_number }}-${GITHUB_SHA::7}"
+          VERSION="1.0.${{ github.run_number }}+${GITHUB_SHA::7}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Version: $VERSION"
 
