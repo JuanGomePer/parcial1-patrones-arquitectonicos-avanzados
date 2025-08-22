@@ -57,7 +57,7 @@ jobs:
         run: |
           cd manifiestos
           helm package charts/patrones
-          mv patrones-*.tgz ../patrones-latest.tgz   # 🔥 Guardamos solo el último chart
+          mv patrones-*.tgz patrones-latest.tgz   # ✅ renombra dentro de manifiestos
 
       - name: Checkout helm-chart repo
         uses: actions/checkout@v3
@@ -68,16 +68,12 @@ jobs:
 
       - name: Copy packaged chart to helm-chart repo
         run: |
-          cp ../patrones-latest.tgz helm-chart/
+          cp manifiestos/patrones-latest.tgz helm-chart/
 
       - name: Update Helm repo index
         run: |
           cd helm-chart
-          if [ -f index.yaml ]; then
-            helm repo index . --url https://juangomeper.github.io/helm-chart/ --merge index.yaml
-          else
-            helm repo index . --url https://juangomeper.github.io/helm-chart/
-          fi
+          helm repo index . --url https://juangomeper.github.io/helm-chart/ --merge index.yaml
 
       - name: Commit and push changes to helm-chart repo
         run: |
