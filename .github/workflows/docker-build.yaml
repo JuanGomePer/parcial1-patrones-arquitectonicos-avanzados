@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: JuanGomePer/manifiestos-parcial1-patrones-arquitectonicos-avanzados
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_HELMCHART  }}
           path: manifiestos
 
       - name: Update Helm chart values.yaml image tag
