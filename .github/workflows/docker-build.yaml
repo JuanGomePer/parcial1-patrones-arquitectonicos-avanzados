@@ -1,16 +1,16 @@
-name: Build, Push Docker and Update Helm Chart
+name: Build, Push Docker and Update Helm Chart (DEV)
 
 on:
   push:
     branches:
-      - main
+      - dev
 
 jobs:
-  build_and_update:
+  build_and_update_dev:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout main repo
+      - name: Checkout dev repo
         uses: actions/checkout@v3
 
       - name: Install Helm
@@ -42,17 +42,17 @@ jobs:
         shell: bash
         run: |
           set -e
-          DOCKER_VERSION="1.0.${{ github.run_number }}-${GITHUB_SHA::7}"
-          CHART_VERSION="1.0.${{ github.run_number }}"
+          DOCKER_VERSION="1.0.${{ github.run_number }}-dev-${GITHUB_SHA::7}"
+          CHART_VERSION="1.0.${{ github.run_number }}-dev"
           APP_VERSION="${CHART_VERSION}-${GITHUB_SHA::7}"
           echo "DOCKER_VERSION=$DOCKER_VERSION" >> $GITHUB_ENV
           echo "CHART_VERSION=$CHART_VERSION" >> $GITHUB_ENV
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
-          echo "Docker tag: $DOCKER_VERSION"
-          echo "Chart version: $CHART_VERSION"
-          echo "App version: $APP_VERSION"
+          echo "Docker tag (dev): $DOCKER_VERSION"
+          echo "Chart version (dev): $CHART_VERSION"
+          echo "App version (dev): $APP_VERSION"
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image (DEV)
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -66,14 +66,14 @@ jobs:
           token: ${{ secrets.PAT_HELMCHART }}
           path: manifiestos
 
-      - name: Update Helm chart values.yaml image tag
+      - name: Update Helm chart values-dev.yaml image tag
         shell: bash
         run: |
           set -e
           cd manifiestos/charts/patrones
-          yq eval ".image.tag = \"${DOCKER_VERSION}\"" -i values.yaml
+          yq eval ".image.tag = \"${DOCKER_VERSION}\"" -i values-dev.yaml
 
-      - name: Update Chart version in Chart.yaml
+      - name: Update Chart version in Chart.yaml (DEV)
         shell: bash
         run: |
           set -e
@@ -81,7 +81,7 @@ jobs:
           yq eval ".version = \"${CHART_VERSION}\"" -i Chart.yaml
           yq eval ".appVersion = \"${APP_VERSION}\"" -i Chart.yaml
 
-      - name: Package Helm Chart
+      - name: Package Helm Chart (DEV)
         shell: bash
         run: |
           set -e
@@ -89,7 +89,7 @@ jobs:
           helm package charts/patrones
           PKG="$(ls -1 patrones-*.tgz | tail -n 1)"
           echo "CHART_PKG=$PKG" >> $GITHUB_ENV
-          echo "Empaquetado: $PKG"
+          echo "Empaquetado DEV: $PKG"
 
       - name: Checkout helm-chart repo (GitHub Pages)
         uses: actions/checkout@v3
@@ -126,5 +126,5 @@ jobs:
           git config user.email "github-actions@github.com"
           git pull --rebase || true
           git add .
-          git commit -m "Publish chart patrones ${CHART_VERSION}" || echo "No commit needed"
+          git commit -m "Publish chart patrones (DEV) ${CHART_VERSION}" || echo "No commit needed"
           git push origin main
