@@ -1,127 +1,181 @@
 # 📦 Parcial I – Patrones Arquitectónicos Avanzados
 
-Este repositorio contiene la solución al **Parcial I de Patrones Arquitectónicos Avanzados**, cuyo objetivo es **diseñar e implementar el despliegue completo de una aplicación de gestión de pedidos** compuesta por base de datos, backend y frontend, utilizando **Helm** para empaquetar e **ArgoCD** para la entrega continua (**GitOps**).
+Este repositorio presenta la solución al **Parcial I de Patrones Arquitectónicos Avanzados**, cuyo objetivo fue **diseñar e implementar el despliegue completo de una aplicación monolítica de gestión de pedidos**.  
+
+La aplicación integra:
+
+- **Backend y Frontend**: monolito en **Node.js/Express**, que expone APIs REST (`/api/*`) y sirve frontend estático (`/public`).
+- **Base de datos**: **PostgreSQL** desplegado en Kubernetes con persistencia.
+- **Infraestructura**: Kubernetes + Helm + ArgoCD (GitOps).
+- **CI/CD**: GitHub Actions que automatizan build, empaquetado y publicación de charts.
 
 ---
 
-## 📐 Arquitectura de la aplicación
+## Arquitectura general
 
-La aplicación implementa un **sistema de gestión de pedidos** compuesto por:
+1. **Aplicación (monolito Node.js)**  
+   - API: usuarios, productos y pedidos.  
+   - Frontend: servido desde el mismo contenedor (estáticos).  
+   - Healthcheck: `/health`.  
 
-- **Base de datos**: PostgreSQL (chart oficial de Bitnami).  
-- **Backend**: API en **Java Spring Boot**, expuesta como servicio interno y conectada a PostgreSQL.  
-- **Frontend**: Aplicación en **HTML estático**, desplegada en un contenedor Nginx y expuesta vía Ingress.  
+2. **Base de datos (PostgreSQL)**  
+   - `Deployment` + `Service` (`postgres-service`).  
+   - Variables sensibles en `Secret` (`postgres-secret`).  
+   - Persistencia en `PVC` (`postgres-pvc`).  
 
-El despliegue se gestiona en Kubernetes con la siguiente estructura:
+3. **Kubernetes**  
+   - Recursos: `Deployment`, `Service`, `Ingress`, `Secret`, `PVC`, `HPA`.  
+   - Escalabilidad automática con `HorizontalPodAutoscaler`.  
+   - Ingress NGINX expone la app en la ruta base `/patrones`.  
 
-```
-charts/
- └── pedido-app/
-      ├── Chart.yaml
-      ├── values.yaml
-      ├── values-dev.yaml
-      ├── values-prod.yaml
-      ├── charts/
-      │    ├── db/        -> PostgreSQL
-      │    ├── backend/   -> API Spring Boot
-      │    └── frontend/  -> HTML estático en Nginx
-environments/
- ├── dev/
- │    └── application.yaml   -> Definición ArgoCD para entorno dev
- └── prod/
-      └── application.yaml   -> Definición ArgoCD para entorno prod
-```
+4. **Helm**  
+   - Chart definido en `charts/patrones`.  
+   - Templates parametrizados: despliegue app, postgres, service, ingress, pvc, secrets, hpa.  
+   - `values.yaml` controla imagen, puertos, recursos y credenciales.  
 
----
+5. **ArgoCD (GitOps)**  
+   - Lee los releases Helm desde GitHub Pages (`helm-chart`).  
+   - Aplica sincronización automática en el cluster.  
 
-## ⚙️ Recursos Kubernetes implementados
-
-Cada subchart define los recursos necesarios para su despliegue en el clúster:
-
-- **Backend (Spring Boot)**
-  - `Deployment` con réplicas configurables.
-  - `Service` tipo `ClusterIP`.
-  - `ConfigMap` para configuración no sensible (ej: URL DB).
-  - `Secret` para credenciales seguras de la base de datos.
-  - `HorizontalPodAutoscaler`.
-
-- **Frontend (HTML en Nginx)**  
-  - `Deployment` con el contenedor de Nginx sirviendo los archivos HTML.  
-  - `Service` tipo `NodePort` o `ClusterIP`.  
-  - `Ingress` en la ruta `/`.
-
-- **Base de Datos (PostgreSQL)**  
-  - Chart de **Bitnami PostgreSQL** como dependencia.  
-  - `PersistentVolumeClaim` para garantizar persistencia de datos.  
-
-- **Ingress Controller**  
-  - Ruteo de endpoints:  
-    - `/api/*` → backend  
-    - `/` → frontend  
+6. **CI/CD (GitHub Actions)**  
+   - Compila y publica imagen Docker en DockerHub.  
+   - Actualiza `values.yaml` y `Chart.yaml`.  
+   - Empaqueta chart (`.tgz`) y lo publica en GitHub Pages (`helm repo`).  
+   - ArgoCD detecta nueva versión y despliega.  
 
 ---
 
-## 🚀 Instalación manual con Helm
+## Estructura de repositorios
 
-### 1. Clonar el repositorio
+- **App (este repo)**  
+  Código fuente, Dockerfile y workflow de CI/CD.
+  ```
+  /public/index.html
+  /sql/schema.sql
+  server.js
+  db.js
+  Dockerfile
+  .github/workflows/docker-build.yaml
+  ```
+
+- **Repo de manifiestos / chart**  
+  ```
+  charts/patrones/
+    Chart.yaml
+    values.yaml
+    templates/
+      patrones-despliegue-1.yaml
+      patrones-services.yaml
+      patrones-ingress.yaml
+      postgres-deployment.yaml
+      postgres-secret.yaml
+      postgres-pvc.yaml
+  app-argocd.yaml
+  ```
+
+- **Repo Helm (GitHub Pages)**  
+  Publica paquetes y `index.yaml`.
+  ```
+  index.yaml
+  patrones-1.0.37.tgz
+  patrones-1.0.38.tgz
+  patrones-1.0.39.tgz
+  patrones-1.0.40.tgz
+  patrones-1.0.41.tgz
+  ```
+
+---
+
+## Recursos Kubernetes implementados
+
+- **App Node.js**
+  - `Deployment` (con probes en `/health`).
+  - `Service` tipo ClusterIP.
+  - `HPA` basado en CPU (requiere `metrics-server`).
+  - `Ingress` expone `/patrones`, `/patrones/api/*`, `/patrones/health`.
+
+- **PostgreSQL**
+  - `Deployment` + `Service` (`postgres-service`).
+  - `Secret`: usuario, password y nombre BD.
+  - `PVC`: persistencia de 1Gi.
+
+- **ArgoCD**
+  - `Application` (`app-argocd.yaml`) apunta al repo Helm.  
+  - `syncPolicy`: automático, con prune y selfHeal.
+
+---
+
+## Flujo CI/CD
+
+1. Push a `main` en repo de la app.  
+2. Workflow de GitHub Actions:
+   - Build + push Docker image.  
+   - Actualiza chart (`values.yaml`, `Chart.yaml`).  
+   - Empaqueta y publica chart en GitHub Pages.  
+3. ArgoCD detecta nueva versión y sincroniza en el cluster.  
+
+> **Resultado**: despliegue automático sin intervención manual.
+
+---
+
+## Comandos útiles
+
+### Helm
 ```bash
-git clone https://github.com/JuanGomePer/parcial1-patrones-arquitectonicos-avanzados.git
-cd parcial1-patrones-arquitectonicos-avanzados/charts/pedido-app
+helm repo add juangomeper https://juangomeper.github.io/helm-chart/
+helm repo update
+helm search repo juangomeper/patrones
+helm upgrade --install mi-release juangomeper/patrones -n default --create-namespace
 ```
 
-### 2. Instalar en entorno **dev**
+### kubectl
 ```bash
-helm install pedido-app-dev . -f values-dev.yaml -n dev --create-namespace
+kubectl get pods,svc,ingress,hpa
+kubectl describe deployment patrones
+kubectl logs <pod>
+kubectl top pods
 ```
 
-### 3. Instalar en entorno **prod**
+### Conexión a PostgreSQL
 ```bash
-helm install pedido-app-prod . -f values-prod.yaml -n prod --create-namespace
-```
-
-### 4. Verificar recursos
-```bash
-kubectl get pods -n dev
-kubectl get pods -n prod
-kubectl get ingress -A
+kubectl run psql-client --rm -it --image=postgres:15 --restart=Never --   psql -h postgres-service -U postgres -d pedidosdb
 ```
 
 ---
 
-## 🔄 Integración con ArgoCD (GitOps)
+## Endpoints de la aplicación
 
-Este repositorio incluye configuraciones para **ArgoCD**, lo que permite que cada cambio en `values-dev.yaml` o `values-prod.yaml` se sincronice automáticamente en el clúster.
+> Suponiendo `http://<EXTERNAL-IP>/patrones`
 
-1. **Registrar el repositorio en ArgoCD**  
-   En la interfaz de ArgoCD, agregar este repositorio Git.
-
-2. **Aplicar Application de ArgoCD**  
-   ```bash
-   kubectl apply -f environments/dev/application.yaml
-   kubectl apply -f environments/prod/application.yaml
-   ```
-
-3. **Sincronización automática**  
-   Cada cambio en los archivos de configuración (`values.yaml`) será detectado por ArgoCD, que actualizará los recursos en Kubernetes sin necesidad de ejecutar comandos manuales.
-
----
-
-## 🌐 Endpoints de acceso
-
-Una vez desplegada la aplicación y configurado el Ingress:
-
-- **Frontend (HTML estático en Nginx)** → `/`  
-- **Backend API (Spring Boot)** → `/api/*`  
-
-(Dependiendo del entorno y configuración del host en el Ingress Controller).
+- **Frontend** → `/patrones`  
+- **Healthcheck** → `/patrones/health`  
+- **Usuarios**  
+  - `GET  /patrones/api/users`  
+  - `POST /patrones/api/users`  
+- **Productos**  
+  - `GET  /patrones/api/products`  
+  - `POST /patrones/api/products`  
+  - `PUT  /patrones/api/products/:id`  
+  - `DELETE /patrones/api/products/:id`  
+- **Pedidos**  
+  - `GET  /patrones/api/orders`  
+  - `POST /patrones/api/orders`
 
 ---
 
-## ✅ Buenas prácticas aplicadas
+## Buenas prácticas aplicadas
 
-- Separación clara de entornos (`dev` y `prod`).  
-- Uso de **charts oficiales** (Bitnami PostgreSQL).  
-- Manejo seguro de credenciales vía **Secrets**.  
-- Persistencia de datos en PostgreSQL mediante **PVC**.  
-- Configuración de **resources.limits** y **resources.requests**.  
-- Automatización completa con enfoque **GitOps** usando ArgoCD.  
+- Uso de **Secrets** para credenciales.  
+- **PVC** para datos persistentes de PostgreSQL.  
+- Definición de `requests` y `limits` en pods.  
+- **Probes** (`startup`, `readiness`) para salud de la app.  
+- **Autoscaling** con HPA (CPU).  
+- Automatización total con **CI/CD + GitOps (ArgoCD)**.  
+
+---
+
+## Pendientes por implementar
+
+- **Separación de entornos** (dev/prod) con `values-dev.yaml` / `values-prod.yaml`.  
+- **Observabilidad** más robusta (dashboards, logs centralizados).  
+- **Tests automáticos** en CI.  
