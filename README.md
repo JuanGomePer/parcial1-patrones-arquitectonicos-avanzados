@@ -1,5 +1,7 @@
 # Parcial I – Patrones Arquitectónicos Avanzados
 
+## Integrantes del grupo: Juan Andrés Goméz - Juan Pablo Restrepo - Andrés Ricaurte
+
 Este repositorio presenta la solución al **Parcial I de Patrones Arquitectónicos Avanzados**, cuyo objetivo fue **diseñar e implementar el despliegue completo de una aplicación monolítica de gestión de pedidos** con separación de entornos **dev** y **prod**.
 
 La aplicación integra:
