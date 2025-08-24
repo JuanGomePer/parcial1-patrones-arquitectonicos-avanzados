@@ -1,181 +1,213 @@
 # 📦 Parcial I – Patrones Arquitectónicos Avanzados
 
-Este repositorio presenta la solución al **Parcial I de Patrones Arquitectónicos Avanzados**, cuyo objetivo fue **diseñar e implementar el despliegue completo de una aplicación monolítica de gestión de pedidos**.  
+Este repositorio presenta la solución al **Parcial I de Patrones Arquitectónicos Avanzados**, cuyo objetivo fue **diseñar e implementar el despliegue completo de una aplicación monolítica de gestión de pedidos** con separación de entornos **dev** y **prod**.
 
 La aplicación integra:
 
 - **Backend y Frontend**: monolito en **Node.js/Express**, que expone APIs REST (`/api/*`) y sirve frontend estático (`/public`).
 - **Base de datos**: **PostgreSQL** desplegado en Kubernetes con persistencia.
 - **Infraestructura**: Kubernetes + Helm + ArgoCD (GitOps).
-- **CI/CD**: GitHub Actions que automatizan build, empaquetado y publicación de charts.
+- **CI/CD**: GitHub Actions que automatizan build, empaquetado y publicación de charts en GitHub Pages.
+- **Separación de entornos**: Dev y Prod, cada uno con su `values.yaml` y su `Application` en ArgoCD.
 
 ---
 
 ## Arquitectura general
 
-1. **Aplicación (monolito Node.js)**  
-   - API: usuarios, productos y pedidos.  
-   - Frontend: servido desde el mismo contenedor (estáticos).  
-   - Healthcheck: `/health`.  
+1. **Aplicación (monolito Node.js)**
+   - API: usuarios, productos y pedidos.
+   - Frontend: servido desde el mismo contenedor (estáticos).
+   - Healthcheck: `/health`.
 
-2. **Base de datos (PostgreSQL)**  
-   - `Deployment` + `Service` (`postgres-service`).  
-   - Variables sensibles en `Secret` (`postgres-secret`).  
-   - Persistencia en `PVC` (`postgres-pvc`).  
+2. **Base de datos (PostgreSQL)**
+   - `Deployment` + `Service` (`postgres-service`).
+   - Variables sensibles en `Secret` (`postgres-secret`).
+   - Persistencia en `PVC` (`postgres-pvc`).
 
-3. **Kubernetes**  
-   - Recursos: `Deployment`, `Service`, `Ingress`, `Secret`, `PVC`, `HPA`.  
-   - Escalabilidad automática con `HorizontalPodAutoscaler`.  
-   - Ingress NGINX expone la app en la ruta base `/patrones`.  
+3. **Kubernetes**
+   - Recursos: `Deployment`, `Service`, `Ingress`, `Secret`, `PVC`, `HPA`.
+   - Escalabilidad automática con `HorizontalPodAutoscaler`.
+   - Ingress NGINX expone:
+     - **Prod** en `/patrones`.
+     - **Dev** en `/patrones-dev`.
 
-4. **Helm**  
-   - Chart definido en `charts/patrones`.  
-   - Templates parametrizados: despliegue app, postgres, service, ingress, pvc, secrets, hpa.  
-   - `values.yaml` controla imagen, puertos, recursos y credenciales.  
+4. **Helm**
+   - Chart definido en `charts/patrones`.
+   - Templates parametrizados: despliegue app, postgres, service, ingress, pvc, secrets, hpa.
+   - `values.yaml` (prod) y `values-dev.yaml` (dev) controlan imagen, puertos, recursos y credenciales.
 
-5. **ArgoCD (GitOps)**  
-   - Lee los releases Helm desde GitHub Pages (`helm-chart`).  
-   - Aplica sincronización automática en el cluster.  
+5. **ArgoCD (GitOps)**
+   - Dos `Application`:
+     - `patrones` (prod) → namespace `default`.
+     - `patrones-dev` (dev) → namespace `patrones-dev`.
+   - Ambas sincronizan desde el repo Helm (`https://juangomeper.github.io/helm-chart/`).
+   - Sync automático con `prune` y `selfHeal`.
 
-6. **CI/CD (GitHub Actions)**  
-   - Compila y publica imagen Docker en DockerHub.  
-   - Actualiza `values.yaml` y `Chart.yaml`.  
-   - Empaqueta chart (`.tgz`) y lo publica en GitHub Pages (`helm repo`).  
-   - ArgoCD detecta nueva versión y despliega.  
+6. **CI/CD (GitHub Actions)**
+   - **Branch `main` (Prod)**:
+     - Publica imágenes Docker con tags `1.0.X`.
+     - Empaqueta charts con versiones `1.0.X`.
+   - **Branch `dev` (Dev)**:
+     - Publica imágenes Docker con tags `1.0.X-dev`.
+     - Empaqueta charts con versiones `1.0.X-dev`.
+   - ArgoCD detecta el cambio y sincroniza automáticamente en cada entorno.
 
 ---
 
 ## Estructura de repositorios
 
-- **App (este repo)**  
-  Código fuente, Dockerfile y workflow de CI/CD.
-  ```
-  /public/index.html
-  /sql/schema.sql
-  server.js
-  db.js
-  Dockerfile
-  .github/workflows/docker-build.yaml
-  ```
+### **Repo App**
+Código fuente, Dockerfile y workflow de CI/CD.
+```
+/public/index.html
+/sql/schema.sql
+server.js
+db.js
+Dockerfile
+docker-compose.yml
+.github/workflows/docker-build.yaml
+```
 
-- **Repo de manifiestos / chart**  
-  ```
-  charts/patrones/
-    Chart.yaml
-    values.yaml
-    templates/
-      patrones-despliegue-1.yaml
-      patrones-services.yaml
-      patrones-ingress.yaml
-      postgres-deployment.yaml
-      postgres-secret.yaml
-      postgres-pvc.yaml
-  app-argocd.yaml
-  ```
+### **Repo de manifiestos / chart**
+```
+charts/patrones/
+  Chart.yaml
+  values.yaml
+  values-dev.yaml
+  templates/
+    app-argocd.yaml
+    app-argocd-dev.yaml
+    patrones-despliegue-1.yaml
+    patrones-services.yaml
+    patrones-ingress.yaml
+    patrones-hpa.yaml
+    postgres-deployment.yaml
+    postgres-secret.yaml
+    postgres-pvc.yaml
+    postgres-services.yaml
+```
 
-- **Repo Helm (GitHub Pages)**  
-  Publica paquetes y `index.yaml`.
-  ```
-  index.yaml
-  patrones-1.0.37.tgz
-  patrones-1.0.38.tgz
-  patrones-1.0.39.tgz
-  patrones-1.0.40.tgz
-  patrones-1.0.41.tgz
-  ```
-
----
-
-## Recursos Kubernetes implementados
-
-- **App Node.js**
-  - `Deployment` (con probes en `/health`).
-  - `Service` tipo ClusterIP.
-  - `HPA` basado en CPU (requiere `metrics-server`).
-  - `Ingress` expone `/patrones`, `/patrones/api/*`, `/patrones/health`.
-
-- **PostgreSQL**
-  - `Deployment` + `Service` (`postgres-service`).
-  - `Secret`: usuario, password y nombre BD.
-  - `PVC`: persistencia de 1Gi.
-
-- **ArgoCD**
-  - `Application` (`app-argocd.yaml`) apunta al repo Helm.  
-  - `syncPolicy`: automático, con prune y selfHeal.
+### **Repo Helm (GitHub Pages)**
+Publica paquetes y `index.yaml`.
+```
+index.yaml
+patrones-1.0.41.tgz
+patrones-1.0.42.tgz
+patrones-1.0.43-dev.tgz
+patrones-1.0.44-dev.tgz
+patrones-1.0.45-dev.tgz
+patrones-1.0.52.tgz
+patrones-1.0.54-dev.tgz
+...
+```
 
 ---
 
-## Flujo CI/CD
+## Instalación manual con Helm
 
-1. Push a `main` en repo de la app.  
-2. Workflow de GitHub Actions:
-   - Build + push Docker image.  
-   - Actualiza chart (`values.yaml`, `Chart.yaml`).  
-   - Empaqueta y publica chart en GitHub Pages.  
-3. ArgoCD detecta nueva versión y sincroniza en el cluster.  
-
-> **Resultado**: despliegue automático sin intervención manual.
-
----
-
-## Comandos útiles
-
-### Helm
+### **Prod**
 ```bash
 helm repo add juangomeper https://juangomeper.github.io/helm-chart/
 helm repo update
-helm search repo juangomeper/patrones
-helm upgrade --install mi-release juangomeper/patrones -n default --create-namespace
+helm install patrones juangomeper/patrones   --version 1.0.52   -f values.yaml   -n default --create-namespace
 ```
 
-### kubectl
+### **Dev**
 ```bash
-kubectl get pods,svc,ingress,hpa
-kubectl describe deployment patrones
-kubectl logs <pod>
-kubectl top pods
-```
-
-### Conexión a PostgreSQL
-```bash
-kubectl run psql-client --rm -it --image=postgres:15 --restart=Never --   psql -h postgres-service -U postgres -d pedidosdb
+helm repo add juangomeper https://juangomeper.github.io/helm-chart/
+helm repo update
+helm install patrones-dev juangomeper/patrones   --version 1.0.54-dev   -f values-dev.yaml   -n patrones-dev --create-namespace
 ```
 
 ---
 
-## Endpoints de la aplicación
+## 🔄 Configuración en ArgoCD
 
-> Suponiendo `http://<EXTERNAL-IP>/patrones`
+### **Prod (`app-argocd.yaml`)**
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: patrones
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  source:
+    repoURL: https://juangomeper.github.io/helm-chart/
+    chart: patrones
+    targetRevision: "*"
+    helm:
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
 
-- **Frontend** → `/patrones`  
-- **Healthcheck** → `/patrones/health`  
-- **Usuarios**  
-  - `GET  /patrones/api/users`  
-  - `POST /patrones/api/users`  
-- **Productos**  
-  - `GET  /patrones/api/products`  
-  - `POST /patrones/api/products`  
-  - `PUT  /patrones/api/products/:id`  
-  - `DELETE /patrones/api/products/:id`  
-- **Pedidos**  
-  - `GET  /patrones/api/orders`  
-  - `POST /patrones/api/orders`
+### **Dev (`app-argocd-dev.yaml`)**
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: patrones-dev
+  namespace: argocd
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: patrones-dev
+  project: default
+  source:
+    repoURL: https://juangomeper.github.io/helm-chart/
+    chart: patrones
+    targetRevision: "*-dev"
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-dev.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
+
+---
+
+## Endpoints de acceso
+
+Suponiendo `http://<EXTERNAL-IP>`:
+
+- **Prod**
+  - Frontend → `/patrones`
+  - Healthcheck → `/patrones/health`
+  - API Usuarios → `/patrones/api/users`
+  - API Productos → `/patrones/api/products`
+  - API Pedidos → `/patrones/api/orders`
+
+- **Dev**
+  - Frontend → `/patrones-dev`
+  - Healthcheck → `/patrones-dev/health`
+  - API Usuarios → `/patrones-dev/api/users`
+  - API Productos → `/patrones-dev/api/products`
+  - API Pedidos → `/patrones-dev/api/orders`
 
 ---
 
 ## Buenas prácticas aplicadas
 
-- Uso de **Secrets** para credenciales.  
-- **PVC** para datos persistentes de PostgreSQL.  
-- Definición de `requests` y `limits` en pods.  
-- **Probes** (`startup`, `readiness`) para salud de la app.  
-- **Autoscaling** con HPA (CPU).  
-- Automatización total con **CI/CD + GitOps (ArgoCD)**.  
+- Uso de **Secrets** para credenciales.
+- **PVC** para datos persistentes de PostgreSQL.
+- Definición de `requests` y `limits` en pods.
+- **Probes** (`startup`, `readiness`) para salud de la app.
+- **Autoscaling** con HPA (CPU).
+- Automatización total con **CI/CD + GitOps (ArgoCD)**.
+- **Separación de entornos** (`dev` y `prod`) con values dedicados.
 
 ---
-
-## Pendientes por implementar
-
-- **Separación de entornos** (dev/prod) con `values-dev.yaml` / `values-prod.yaml`.  
-- **Observabilidad** más robusta (dashboards, logs centralizados).  
-- **Tests automáticos** en CI.  
