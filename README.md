@@ -1,10 +1,10 @@
-# 📦 Parcial I – Patrones Arquitectónicos Avanzados
+# Parcial I – Patrones Arquitectónicos Avanzados
 
 Este repositorio presenta la solución al **Parcial I de Patrones Arquitectónicos Avanzados**, cuyo objetivo fue **diseñar e implementar el despliegue completo de una aplicación monolítica de gestión de pedidos** con separación de entornos **dev** y **prod**.
 
 La aplicación integra:
 
-- **Backend y Frontend**: monolito en **Node.js/Express**, que expone APIs REST (`/api/*`) y sirve frontend estático (`/public`).
+- **Backend y Frontend**: monolito en **Node.js/Express**, que expone APIs REST (`patrones/api/*`) y sirve frontend estático (`/patrones`).
 - **Base de datos**: **PostgreSQL** desplegado en Kubernetes con persistencia.
 - **Infraestructura**: Kubernetes + Helm + ArgoCD (GitOps).
 - **CI/CD**: GitHub Actions que automatizan build, empaquetado y publicación de charts en GitHub Pages.
@@ -121,7 +121,7 @@ helm install patrones-dev juangomeper/patrones   --version 1.0.54-dev   -f value
 
 ---
 
-## 🔄 Configuración en ArgoCD
+## Configuración en ArgoCD
 
 ### **Prod (`app-argocd.yaml`)**
 ```yaml
